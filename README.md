@@ -1,5 +1,6 @@
 # 📱 Gustie Life
 
+Chris Branch
 **Gustie Life** is a mobile application built for students at **Gustavus Adolphus College**. It centralizes key campus features like events, dining options, student spotlights, and push notifications into one sleek, user-friendly experience. Built with **React Native (Expo)** and **Firebase**, it aims to make student life smoother and more connected.
 
 ---
@@ -22,7 +23,7 @@
 - Firebase (Auth, Firestore, Storage)
 - Expo Router
 - AsyncStorage
-- Push Notifications (Expo Push API) – *in development*
+- Push Notifications (Expo Push API) – _in development_
 
 ---
 
