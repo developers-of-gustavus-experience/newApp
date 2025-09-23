@@ -44,6 +44,7 @@ export default function DiscoverScreen() {
         onChangeText={setQuery}
         style={styles.searchInput}
         placeholderTextColor="#888"
+        backgroundColor="#ffffffff"
       />
 
       {filteredData.length === 0 && query.trim() !== '' && (
@@ -73,27 +74,28 @@ const styles = StyleSheet.create({
     paddingTop: 80,
     paddingBottom: 50,
     paddingHorizontal: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffffff',
   },
   searchInput: {
     height: 45,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 8,
+    borderBottomColor: '#030303ff',
+    borderBottomWidth: 2,
+    //bottomBorderRadius: 0,
+   // borderBottomRadius: 8,
     paddingHorizontal: 12,
     marginBottom: 12,
     fontSize: 16,
-    color: '#000',
+    color: '#ffffffff',
   },
   searchButton: {
-    backgroundColor: '#007aff',
+    backgroundColor: '#ffffffff',
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
     marginBottom: 16,
   },
   searchButtonText: {
-    color: '#fff',
+    color: '#ffffffff',
     fontWeight: '600',
     fontSize: 16,
   },
@@ -101,7 +103,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   card: {
-    backgroundColor: '#f2f2f2',
+    backgroundColor: '#ffee00ff',
     padding: 20,
     borderRadius: 10,
     marginBottom: 12,
@@ -109,6 +111,6 @@ const styles = StyleSheet.create({
   },
   cardText: {
     fontSize: 16,
-    color: '#333',
+    color: '#070707ff',
   },
 });

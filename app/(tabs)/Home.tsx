@@ -13,44 +13,46 @@ import {
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { trackTagClicks, getTopTags } from '../utils/tracking';
-import * as Notifications from 'expo-notifications';
+//import { trackTagClicks, getTopTags } from '../utils/tracking';
+//import * as Notifications from 'expo-notifications';
 import data from '../../constants/homeScreenData';
 
 const defaultImage = require('../../assets/images/cards/default.png');
 const welcomeBackground = require('../../assets/images/welcome_bg.png');
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+// Notifications.setNotificationHandler({
+//   handleNotification: async () => ({
+//     shouldShowAlert: true,
+//     shouldPlaySound: false,
+//     shouldSetBadge: false,
+//   }),
+// });
 
 export default function HomeScreen() {
   const router = useRouter();
 
-  useEffect(() => {
-    const askNotificationPermission = async () => {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
+  // Notifications permission setup commented out
+  // useEffect(() => {
+  //   const askNotificationPermission = async () => {
+  //     const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  //     let finalStatus = existingStatus;
 
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
+  //     if (existingStatus !== 'granted') {
+  //       const { status } = await Notifications.requestPermissionsAsync();
+  //       finalStatus = status;
+  //     }
 
-      if (finalStatus !== 'granted') {
-        console.warn('❌ Notification permission not granted');
-      } else {
-        console.log('✅ Notification permission granted');
-      }
-    };
+  //     if (finalStatus !== 'granted') {
+  //       console.warn('❌ Notification permission not granted');
+  //     } else {
+  //       console.log('✅ Notification permission granted');
+  //     }
+  //   };
 
-    askNotificationPermission();
-  }, []);
+  //   askNotificationPermission();
+  // }, []);
 
+  // Notifications scheduling commented out
   // useEffect(() => {
   //   const interval = setInterval(async () => {
   //     const topTags = await getTopTags();
@@ -82,7 +84,7 @@ export default function HomeScreen() {
 
   const handleCardPress = (section: string, index: number) => {
     const item = data[section][index];
-    trackTagClicks(item.tags || []);
+    //trackTagClicks(item.tags || []);
     router.push({
       pathname: '/HomeCard',
       params: {
@@ -115,9 +117,9 @@ export default function HomeScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 90 }}>
-      <TouchableOpacity onPress={resetClickStats} style={styles.resetButton}>
+      {/* <TouchableOpacity onPress={resetClickStats} style={styles.resetButton}>
         <Text style={styles.resetButtonText}>Reset Stats</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       <ImageBackground source={welcomeBackground} style={styles.welcomeBackground}>
         <LinearGradient colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.9)']} style={styles.gradientOverlay}>

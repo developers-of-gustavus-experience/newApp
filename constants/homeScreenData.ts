@@ -16,6 +16,30 @@ const wellbeing = require('../assets/images/well-being.png');
 const artsAndMusic = require('../assets/images/arts_and_music.png');
 const athletics = require('../assets/images/athletics.png');
 
+// This is going in the Campus Safety card
+const CampusSafetyphoneNumbers = [
+  { name: 'Campus Safety', number: '507-933-8888' },
+  { name: 'Health Services', number: '507-933-6666' },
+  { name: 'Counseling Services', number: '507-933-5555' },
+  // CF Numbers
+  { name: 'Arbor View, College View, Chapel View CF', number: '507-933-7000' },
+  { name: 'Complex CF', number: '507-933-7001' },
+  { name: 'Norelius CF', number: '507-933-7002' },
+  { name: 'Sohre and Pittman CF', number: '507-933-7003' },
+  { name: 'Prairie View, International Center, and Southwest CF', number: '507-933-7004' },
+  { name: 'Rundstrom and Uhler CF', number: '507-933-7005' },
+];
+
+// This is going in the Campus Safety card
+const HealthServicesPhoneNumbers = [
+  { name: 'Health Services', number: '507-933-6666' },
+  { name: 'Counseling Center', number: '507-933-5555' },  
+  { name: 'Campus Safety', number: '507-933-8888' },
+  { name: 'Dean of Students', number: '507-933-7520' },
+  { name: 'Sexual Assault Response Team (SART)', number: '507-933-6200' },
+  { name: '24-Hour Crisis Line', number: '1-800-422-4453' },
+];
+
 export default {
   featured: [
     {
@@ -42,18 +66,21 @@ export default {
       title: 'Evelyn Young Dining Room',
       description: 'The heart of student dining at Gustavus, Evelyn Young Dining Room offers nutritious meals, themed nights, and a warm community atmosphere.',
       image: evelynYoung,
+      menu: 'https://www.gustavus.edu/dining/evelyn-young-dining-room',
       tags: ['dining', 'cafeteria'],
     },
     {
       title: 'Steamery',
       description: 'A popular campus eatery for fast, fresh food and student-friendly vibes, the Steamery continues to be a favorite stop between classes.',
       image: steamery,
+      menu: 'https://www.gustavus.edu/dining/steamery',
       tags: ['dining', 'fast food'],
     },
     {
       title: 'Courtyard Café',
       description: 'Located in the lower level of the Campus Center, Courtyard Café offers coffee, smoothies, and cozy spaces for studying and socializing.',
       image: courtyard,
+      menu: 'https://www.gustavus.edu/dining/courtyard-cafe',
       tags: ['dining', 'cafe'],
     },
     {
@@ -88,36 +115,43 @@ export default {
       title: 'Campus Map',
       description: 'Navigate Gustavus with ease using the latest interactive campus map, complete with building details, walking paths, and accessibility routes.',
       image: campusMap,
+      link: 'https://gustavus.edu/maps/',
       tags: ['navigation', 'campus'],
     },
     {
       title: 'Ride the GusBus',
       description: 'The GusBus shuttle offers students and staff free transport between key campus locations and nearby stops, reducing parking stress and carbon impact.',
+      info: '\n Hours of operation: Friday and Saturday 9PM - 2AM, dial (888) 880-4696 for a ride from designated pickup and drop off locations: \n\n Arborview Apartments \n Chapelview Apartments \n Collegeview Apartments \n Southwest Hall, \n 3 Flags Turnaround \n International Center \n 5th Street & Jefferson Avenue \n 7th Street & Jefferson Avenue \n 3rd Street & Nassau Avenue',
       image: gusbus,
       tags: ['transportation', 'campus life'],
     },
     {
       title: 'Campus Safety Resources Every Gustie Should Know',
       description: 'Gustavus provides robust safety services including 24/7 security patrols, blue light stations, and Safe Walk programs to keep the community secure.',
+      CampusSafetyphoneNumbers,
       image: safetyInfo,
+      
       tags: ['safety', 'resources'],
     },
     {
       title: 'Well-being at Gustavus',
       description: 'Mental and physical wellness are top priorities at Gustavus. Learn about campus health services, counseling, and stress relief events.',
       image: wellbeing,
+      HealthServicesPhoneNumbers,
       tags: ['wellness', 'health'],
     },
     {
       title: 'Arts & Music at GAC: A Creative Legacy',
       description: 'From student concerts to professional exhibits, Gustavus fosters artistic expression in music, theatre, and visual arts.',
       image: artsAndMusic,
+      link: 'https://gustavus.edu/arts/',
       tags: ['arts', 'music'],
     },
     {
       title: 'Gustavus Athletics: Go Gusties!',
       description: 'From MIAC championships to intramural leagues, Gustavus Athletics provides opportunities for competition, teamwork, and school pride.',
       image: athletics,
+      link : 'https://gogusties.com/', 
       tags: ['sports', 'fitness'],
     },
   ],

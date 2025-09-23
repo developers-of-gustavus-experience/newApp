@@ -6,16 +6,16 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme, Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+// import * as Notifications from 'expo-notifications';
 
 // ✅ Configure how notifications behave when received while the app is in the foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,     // Show banner/alert when notification arrives
-    shouldPlaySound: true,     // Play sound
-    shouldSetBadge: false,     // Don't update app icon badge count
-  }),
-});
+// Notifications.setNotificationHandler({
+//   handleNotification: async () => ({
+//     shouldShowAlert: true,     // Show banner/alert when notification arrives
+//     shouldPlaySound: true,     // Play sound
+//     shouldSetBadge: false,     // Don't update app icon badge count
+//   }),
+// });
 
 // 🚫 Prevent the splash screen from auto-hiding before custom fonts are loaded
 SplashScreen.preventAutoHideAsync();
@@ -39,25 +39,25 @@ export default function RootLayout() {
   });
 
   // 🔔 On app load, set up notification permissions and Android channels
-  useEffect(() => {
-    // Android-specific setup for default notification channel
-    if (Platform.OS === 'android') {
-      Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.DEFAULT,
-      });
-    }
+  // useEffect(() => {
+  //   // Android-specific setup for default notification channel
+  //   if (Platform.OS === 'android') {
+  //     Notifications.setNotificationChannelAsync('default', {
+  //       name: 'default',
+  //       importance: Notifications.AndroidImportance.DEFAULT,
+  //     });
+  //   }
 
-    // iOS: Request user permission for notifications
-    async function requestPermissions() {
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== 'granted') {
-        alert('Permission for notifications not granted');
-      }
-    }
+  //   // iOS: Request user permission for notifications
+  //   async function requestPermissions() {
+  //     const { status } = await Notifications.requestPermissionsAsync();
+  //     if (status !== 'granted') {
+  //       alert('Permission for notifications not granted');
+  //     }
+  //   }
 
-    requestPermissions();
-  }, []);
+  //   requestPermissions();
+  // }, []);
 
   // ❗ If font loading fails, throw error to crash app and surface the problem
   useEffect(() => {

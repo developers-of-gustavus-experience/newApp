@@ -175,33 +175,33 @@ export default function YouScreen() {
   };
 
   // 🛑 Not logged in → show login/signup UI
-  if (!user) {
-    return (
-      <SafeAreaView style={styles.loginContainer}>
-        <Text style={styles.title}>Login</Text>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-        />
-        <TextInput
-          style={styles.textInput}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-        <TouchableOpacity style={styles.button} onPress={signIn}>
-          <Text style={styles.buttonText}>Log In</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={signUp}>
-          <Text style={styles.buttonText}>Create Account</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
+  // if (!user) {
+  //   return (
+  //     <SafeAreaView style={styles.loginContainer}>
+  //       <Text style={styles.title}>Login</Text>
+  //       <TextInput
+  //         style={styles.textInput}
+  //         placeholder="Email"
+  //         value={email}
+  //         onChangeText={setEmail}
+  //         autoCapitalize="none"
+  //       />
+  //       <TextInput
+  //         style={styles.textInput}
+  //         placeholder="Password"
+  //         value={password}
+  //         onChangeText={setPassword}
+  //         secureTextEntry
+  //       />
+  //       <TouchableOpacity style={styles.button} onPress={signIn}>
+  //         <Text style={styles.buttonText}>Log In</Text>
+  //       </TouchableOpacity>
+  //       <TouchableOpacity style={styles.button} onPress={signUp}>
+  //         <Text style={styles.buttonText}>Create Account</Text>
+  //       </TouchableOpacity>
+  //     </SafeAreaView>
+  //   );
+  // }
 
   // ✅ Logged in → show profile + menu
   return (
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingTop: 60,
-    paddingBottom: 2500,
+    paddingBottom: 60,
     paddingHorizontal: 20,
     alignItems: 'center',
     backgroundColor: '#fff',
