@@ -1,426 +1,413 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   SafeAreaView,
   View,
   Text,
   StyleSheet,
   FlatList,
-  Image,
-  Pressable,
-  Share,
+  ActivityIndicator,
+  Modal,
+  KeyboardAvoidingView,
   ScrollView,
   Platform,
-  TouchableOpacity,
   TextInput,
-  Button,
-  Modal,
+  TouchableOpacity,
+  Pressable,
 } from "react-native";
-import { Ionicons, Feather } from "@expo/vector-icons";
-;
+import { Ionicons } from "@expo/vector-icons";
+import {
+  collection,
+  onSnapshot,
+  query,
+  orderBy,
+  doc,
+  getDoc,
+  updateDoc,
+  arrayUnion,
+  increment,
+  arrayRemove,
+} from "firebase/firestore";
+import { db } from "@/FirebaseConfig";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-/** ──────────────────────────────────────────────────────────────
- *  Types
- *  ────────────────────────────────────────────────────────────*/
-type Category = "All" | "Library" | "Sports" | "Weight Room";
+import {
+  PostCard,
+  FilterBar,
+  Category,
+  initials,
+} from "../../components/NotificationsPage";
 
+/* ------------------------------------------------------------------ */
+/*  Types (same as in NotificationsPage)                               */
+/* ------------------------------------------------------------------ */
 type Post = {
   id: string;
-  author: { name: string; avatarUrl?: string }; // avatarUrl optional (we render initials if none)
-  createdAt: Date;
-  location: string; // e.g., "Library"
+  author: { name: string; avatarUrl?: string };
+  createdAt: string;
+  location: string;
   imageUrl?: string;
   text: string;
   tags: string[];
   likes: number;
   comments: number;
-  category: Exclude<Category, "All">; // actual category of the post
+  category: Exclude<Category, "All">;
 };
 
-/** ──────────────────────────────────────────────────────────────
- *  Demo Data (replace with Firestore later)
- *  ────────────────────────────────────────────────────────────*/
-const DEMO_POSTS: Post[] = [
-  {
-    id: "1",
-    author: { name: "Sarah M." },
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-    location: "Library",
-    imageUrl:
-      "https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=1600&auto=format&fit=crop",
-    text:
-      "Beautiful sunset view from the library windows! Perfect study spot with amazing natural lighting.",
-    tags: ["library", "sunset", "study"],
-    likes: 24,
-    comments: 5,
-    category: "Library",
-  },
-  {
-    id: "2",
-    author: { name: "Mike R." },
-    createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
-    location: "Campus Center",
-    imageUrl:
-      "https://images.unsplash.com/photo-1553532435-93d56c1b2e0c?q=80&w=1600&auto=format&fit=crop",
-    text:
-      "Student art pop-up in the Campus Center today—bright, bold, and seriously inspiring.",
-    tags: ["art", "campus", "events"],
-    likes: 12,
-    comments: 3,
-    category: "Sports", // just to show filtering; change as needed
-  },
-  {
-    id: "3",
-    author: { name: "Max M." },
-    createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
-    location: "Lund Center",
-    imageUrl:
-      "https://images.unsplash.com/photo-1553532435-93d56c1b2e0c?q=80&w=1600&auto=format&fit=crop",
-    text:
-      "Common weight room hours and group workout sessions are back! Let’s get stronger together.",
-    tags: ["weight room", "fitness", "workout"],
-    likes: 53,
-    comments: 5,
-    category: "Weight Room", // just to show filtering; change as needed
-  },
-];
-
-/** ──────────────────────────────────────────────────────────────
- *  Color tokens (swap with your Colors.ts if you have one)
- *  ────────────────────────────────────────────────────────────*/
-const Palette = {
-  bg: "#F6F7FB",
-  card: "#FFFFFF",
-  text: "#151718",
-  subtext: "#6B7280",
-  chipBg: "#FFE089", // warm yellow chips like the screenshot
-  chipText: "#3A2F00",
-  accent: "#FFC107", // top brand bar vibe (if you add a header later)
-  border: "#E5E7EB",
+type CommentData = {
+  authors: string[];
+  comments: string[];
 };
 
-/** ──────────────────────────────────────────────────────────────
- *  Helpers
- *  ────────────────────────────────────────────────────────────*/
-const timeAgo = (d: Date) => {
-  const diff = Math.max(1, Math.floor((Date.now() - d.getTime()) / 1000));
-  const units: [number, string][] = [
-    [60, "second"],
-    [60, "minute"],
-    [24, "hour"],
-    [7, "day"],
-    [4.345, "week"],
-    [12, "month"],
-  ];
-  let val = diff;
-  let i = 0;
-  for (; i < units.length && val >= units[i][0]; i++) {
-    val = Math.floor(val / units[i][0]);
+/* ------------------------------------------------------------------ */
+/*  AsyncStorage: Persistent User ID                                  */
+/* ------------------------------------------------------------------ */
+const USER_ID_KEY = "app_user_id";
+
+const getOrCreateUserId = async (): Promise<string> => {
+  let userId = await AsyncStorage.getItem(USER_ID_KEY);
+  if (!userId) {
+    userId = Math.random().toString(36).substring(2, 10);
+    await AsyncStorage.setItem(USER_ID_KEY, userId);
   }
-  const label = units[i - 1]?.[1] ?? "second";
-  return `${val} ${label}${val > 1 ? "s" : ""} ago`;
+  return userId;
 };
 
-const initials = (name: string) =>
-  name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-
-/** ──────────────────────────────────────────────────────────────
- *  Chip
- *  ────────────────────────────────────────────────────────────*/
-const Chip = ({
-  label,
-  selected = false,
-  onPress,
-}: {
-  label: string;
-  selected?: boolean;
-  onPress?: () => void;
-}) => (
-  <Pressable
-    onPress={onPress}
-    style={[
-      styles.chip,
-      { backgroundColor: selected ? Palette.accent : Palette.card, borderColor: Palette.border },
-    ]}
-  >
-    <Text style={[styles.chipText, { color: selected ? "#1B1B1B" : Palette.text }]}>{label}</Text>
-  </Pressable>
-);
-
-/** ──────────────────────────────────────────────────────────────
- *  FilterBar
- *  ────────────────────────────────────────────────────────────*/
-const FilterBar = ({
-  value,
-  onChange,
-}: {
-  value: Category;
-  onChange: (v: Category) => void;
-}) => {
-  const items: Category[] = ["All", "Library", "Sports", "Weight Room"];
-  return (
-    <View style={styles.filterWrap}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-        {items.map((item) => (
-          <Chip
-            key={item}
-            label={item === "All" ? "All Posts" : item}
-            selected={value === item}
-            onPress={() => onChange(item)}
-          />
-        ))}
-      </ScrollView>
-    </View>
-  );
-};
-
-/** ──────────────────────────────────────────────────────────────
- *  PostCard
- *  ────────────────────────────────────────────────────────────*/
-const PostCard = ({
-  post,
-  openCommentsModal,
-  comments,
-}: {
-  post: Post;
-  openCommentsModal: (postId: string) => void;
-  comments: { [postId: string]: string[] };
-}) => {
-  const [liked, setLiked] = useState(false);
-  const likeCount = post.likes + (liked ? 1 : 0);
-
-  const onShare = async () => {
-    try {
-      await Share.share({
-        message: `${post.author.name}: ${post.text}`,
-      });
-    } catch {
-      // ignore
-    }
-  };
-
-  return (
-    <View style={styles.card}>
-      
-        {/* Header */}
-        <View style={styles.headerRow}>
-          {post.author.avatarUrl ? (
-            <Image source={{ uri: post.author.avatarUrl }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarInitials}>{initials(post.author.name || "User")}</Text>
-            </View>
-          )}
-          <View style={{ flex: 1 }}>
-            <View style={styles.nameRow}>
-              <Text style={styles.name}>{post.author.name}</Text>
-              <Text style={styles.dot}> • </Text>
-              <Text style={styles.sub}>{timeAgo(post.createdAt)}</Text>
-            </View>
-            <View style={styles.locRow}>
-              <Ionicons name="location-outline" size={14} color={Palette.subtext} />
-              <Text style={styles.locText}>{post.location}</Text>
-            </View>
-          </View>
-        </View>
-        {/* Image */}
-        {post.imageUrl ? (
-          <Image source={{ uri: post.imageUrl }} style={styles.hero} />
-        ) : null}
-        {/* Body */}
-        <Text style={styles.body}>{post.text}</Text>
-        {/* Tags */}
-        <View style={styles.tagsRow}>
-          {post.tags.map((t) => (
-            <View key={t} style={styles.tagPill}>
-              <Text style={styles.tagText}>#{t}</Text>
-            </View>
-          ))}
-        </View>
-      
-      {/* Actions */}
-      <View style={styles.actionsRow}>
-
-        <Pressable style={styles.actionLeft} onPress={() => setLiked((v) => !v)}>
-          <Feather
-            name={liked ? "heart" : "heart"}
-            size={18}
-            color={liked ? "#E11D48" : Palette.subtext}
-          />
-          <Text style={styles.actionText}>{likeCount}</Text>
-        </Pressable>
-
-      
-
-        <Pressable onPress={() => openCommentsModal(post.id)}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            <Feather name="message-circle" size={18} color={Palette.subtext} />
-            <Text>{comments[post.id]?.length || 0}</Text>
-          </View>
-        </Pressable>
-
-
-        <Pressable style={{ marginLeft: "auto" }} onPress={onShare} hitSlop={8}>
-          <Text style={[styles.shareText]}>Share</Text>
-        </Pressable>
-
-      </View>
-    </View>
-  );
-};
-
-/** ──────────────────────────────────────────────────────────────
- *  Screen
- *  ────────────────────────────────────────────────────────────*/
+/* ------------------------------------------------------------------ */
+/*  MAIN SCREEN                                                       */
+/* ------------------------------------------------------------------ */
 export default function FeedScreen() {
   const [filter, setFilter] = useState<Category>("All");
-  const [comments, setComments] = useState<{ [postId: string]: string[] }>({});
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string>("");
+  const [likedPostIds, setLikedPostIds] = useState<Set<string>>(new Set());
+
+  const [postComments, setPostComments] = useState<{ [postId: string]: CommentData }>({});
+
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
 
-  function openCommentsModal(postId: string) {
+  // --------------------------------------------------------------
+  // 1. Load user + real-time data
+  // --------------------------------------------------------------
+  useEffect(() => {
+    let unsubscribe: () => void;
+
+    const init = async () => {
+      const uid = await getOrCreateUserId();
+      setUserId(uid);
+
+      const q = query(collection(db, "social"), orderBy("dateCreated", "desc"));
+      unsubscribe = onSnapshot(
+        q,
+        async (snapshot) => {
+          const list: Post[] = [];
+          const commentFetches: Promise<void>[] = [];
+
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const postId = docSnap.id;
+
+            // ---------- Likes ----------
+            const likes = Array.isArray(data.likes) ? data.likes : [];
+            if (likes.includes(uid)) {
+              setLikedPostIds((prev) => new Set(prev).add(postId));
+            }
+
+            // ---------- Date ----------
+            const rawDate = data.dateCreated;
+            const formatted = (() => {
+              const d = new Date(rawDate);
+              if (isNaN(d.getTime())) return rawDate;
+              const month = d.getMonth() + 1;
+              const day = d.getDate();
+              const year = d.getFullYear();
+              let hours = d.getHours();
+              const minutes = d.getMinutes().toString().padStart(2, "0");
+              const ampm = hours >= 12 ? "pm" : "am";
+              hours = hours % 12 || 12;
+              return `${month}/${day}/${year} ${hours}:${minutes}${ampm}`;
+            })();
+
+            list.push({
+              id: postId,
+              author: { name: data.author },
+              createdAt: formatted,
+              location: data.location,
+              imageUrl: data.image,
+              text: data.text,
+              tags: data.tags ?? [],
+              likes: likes.length,
+              comments: data.comments ?? 0,
+              category: data.category as Exclude<Category, "All">,
+            });
+
+            // ---------- Comments ----------
+            const commentRef = doc(db, "social", postId, "comments", "comment1");
+            const fetchPromise = getDoc(commentRef).then((snap) => {
+              if (snap.exists()) {
+                const { author = [], comment = [] } = snap.data();
+                setPostComments((prev) => ({
+                  ...prev,
+                  [postId]: {
+                    authors: Array.isArray(author) ? author : [],
+                    comments: Array.isArray(comment) ? comment : [],
+                  },
+                }));
+              } else {
+                setPostComments((prev) => ({ ...prev, [postId]: { authors: [], comments: [] } }));
+              }
+            });
+            commentFetches.push(fetchPromise);
+          });
+
+          await Promise.all(commentFetches);
+          setPosts(list);
+          setLoading(false);
+        },
+        (err) => {
+          console.error("Firestore error:", err);
+          setLoading(false);
+        }
+      );
+    };
+
+    init();
+    return () => unsubscribe?.();
+  }, []);
+
+  // --------------------------------------------------------------
+  // 2. Filter
+  // --------------------------------------------------------------
+  const filteredPosts = useMemo(() => {
+    if (filter === "All") return posts;
+    return posts.filter((p) => p.category === filter);
+  }, [posts, filter]);
+
+  // --------------------------------------------------------------
+  // 3. Add Comment
+  // --------------------------------------------------------------
+  const handleAddComment = async (postId: string, commentText: string) => {
+    if (!commentText.trim()) return;
+
+    const commentRef = doc(db, "social", postId, "comments", "comment1");
+    const postRef = doc(db, "social", postId);
+
+    try {
+      await updateDoc(commentRef, {
+        author: arrayUnion("Anonymous"),
+        comment: arrayUnion(commentText),
+      });
+      await updateDoc(postRef, { comments: increment(1) });
+      setNewComment("");
+    } catch (error) {
+      console.error("Failed to add comment:", error);
+    }
+  };
+
+  // --------------------------------------------------------------
+  // 4. Toggle Like
+  // --------------------------------------------------------------
+  const handleToggleLike = async (postId: string) => {
+    if (!userId) return;
+
+    const postRef = doc(db, "social", postId);
+    const isLiked = likedPostIds.has(postId);
+
+    try {
+      if (isLiked) {
+        await updateDoc(postRef, { likes: arrayRemove(userId) });
+        setLikedPostIds((prev) => {
+          const next = new Set(prev);
+          next.delete(postId);
+          return next;
+        });
+      } else {
+        await updateDoc(postRef, { likes: arrayUnion(userId) });
+        setLikedPostIds((prev) => new Set(prev).add(postId));
+      }
+    } catch (error) {
+      console.error("Failed to toggle like:", error);
+    }
+  };
+
+  // --------------------------------------------------------------
+  // 5. Modal
+  // --------------------------------------------------------------
+  const openCommentsModal = (postId: string) => {
     setSelectedPostId(postId);
     setCommentsModalVisible(true);
-  }
+  };
 
-  function handleAddComment(postId: string, comment: string) {
-    setComments((prev) => ({
-      ...prev,
-      [postId]: [...(prev[postId] || []), comment],
-    }));
-    setNewComment("");
-  }
+  const selectedPost = selectedPostId ? posts.find((p) => p.id === selectedPostId) : null;
+  const selectedComments = useMemo(() => {
+    if (!selectedPostId) return { authors: [], comments: [] };
+    const data = postComments[selectedPostId];
+    return {
+      authors: Array.isArray(data?.authors) ? data.authors : [],
+      comments: Array.isArray(data?.comments) ? data.comments : [],
+    };
+  }, [selectedPostId, postComments]);
 
-  const data = useMemo(() => {
-    if (filter === "All") return DEMO_POSTS;
-    return DEMO_POSTS.filter((p) => p.category === filter);
-  }, [filter]);
+  // --------------------------------------------------------------
+  // Render
+  // --------------------------------------------------------------
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.loading}>
+          <ActivityIndicator size="large" color={Palette.accent} />
+          <Text style={styles.loadingText}>Loading posts...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
       <FlatList
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
-        data={data}
+        data={filteredPosts}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <PostCard
-            post={item}
-            openCommentsModal={openCommentsModal}
-            comments={comments}
-          />
-        )}
+        renderItem={({ item }) => {
+          const postCommentData = postComments[item.id];
+          const isLiked = likedPostIds.has(item.id);
+
+          return (
+            <Pressable
+              onPress={() => openCommentsModal(item.id)}
+              android_ripple={{ color: "#ddd" }}
+              style={({ pressed }) => [
+                {
+                  opacity: pressed ? 0.7 : 1,
+                  marginBottom: 16,
+                },
+              ]}
+            >
+              <View pointerEvents="box-none">
+                <PostCard
+                  post={item}
+                  openCommentsModal={openCommentsModal}
+                  comments={Array.isArray(postCommentData?.comments) ? postCommentData.comments : []}
+                  commentAuthors={Array.isArray(postCommentData?.authors) ? postCommentData.authors : []}
+                  userId={userId}
+                  onToggleLike={handleToggleLike}
+                  isLiked={isLiked}
+                />
+              </View>
+            </Pressable>
+          );
+        }}
         ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
         ListHeaderComponent={<FilterBar value={filter} onChange={setFilter} />}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Text style={styles.emptyText}>No posts in this category yet.</Text>
+          </View>
+        }
       />
-      <Modal
-        visible={commentsModalVisible}
-        animationType="slide"
-        onRequestClose={() => setCommentsModalVisible(false)}
-      >
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#fff", padding: 16 }}>
-          <Text style={{ fontWeight: "bold", fontSize: 18, marginBottom: 12 }}>Comments</Text>
-          {selectedPostId && comments[selectedPostId]?.map((comment, idx) => (
-            <Text key={idx} style={{ marginVertical: 4 }}>{comment}</Text>
-          ))}
-          <TextInput
-            value={newComment}
-            onChangeText={setNewComment}
-            placeholder="Add a comment"
-            style={{ marginVertical: 12, borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 8 }}
-          />
-          <Button title="Post" onPress={() => selectedPostId && handleAddComment(selectedPostId, newComment)} />
-          <Button title="Close" onPress={() => setCommentsModalVisible(false)} />
-        </SafeAreaView>
+
+      {/* ---------- Comments Modal ---------- */}
+      <Modal visible={commentsModalVisible} animationType="slide" onRequestClose={() => setCommentsModalVisible(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={20}>
+          <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setCommentsModalVisible(false)} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={28} color="#007AFF" style={{ paddingRight: "95%" }} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ flex: 1, padding: 16 }}>
+              {selectedPost && (
+                <PostCard
+                  post={selectedPost}
+                  openCommentsModal={() => {}}
+                  comments={selectedComments.comments}
+                  commentAuthors={selectedComments.authors}
+                  userId={userId}
+                  onToggleLike={handleToggleLike}
+                  isLiked={likedPostIds.has(selectedPost.id)}
+                />
+              )}
+
+              <Text style={styles.commentsTitle}>Comments</Text>
+              {selectedComments.comments.length === 0 ? (
+                <Text style={styles.noCommentsText}>
+                  {postComments[selectedPostId!] ? "No comments yet." : "Loading comments..."}
+                </Text>
+              ) : (
+                selectedComments.comments.map((comment, idx) => (
+                  <View key={idx} style={styles.commentItem}>
+                    <Text style={styles.commentAuthor}>{selectedComments.authors[idx] || "Anonymous"}</Text>
+                    <Text style={styles.commentText}>{comment}</Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+
+            <View style={styles.inputRow}>
+              <TextInput
+                value={newComment}
+                onChangeText={setNewComment}
+                placeholder="Add a comment"
+                style={styles.commentInput}
+                onSubmitEditing={() => selectedPostId && handleAddComment(selectedPostId, newComment)}
+                returnKeyType="send"
+              />
+              <TouchableOpacity
+                onPress={() => selectedPostId && handleAddComment(selectedPostId, newComment)}
+                style={styles.sendButton}
+                disabled={!newComment.trim()}
+              >
+                <Ionicons name="send" size={28} color={newComment.trim() ? "#007AFF" : "#ccc"} />
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
 }
 
-/** ──────────────────────────────────────────────────────────────
- *  Styles
- *  ────────────────────────────────────────────────────────────*/
+/* ------------------------------------------------------------------ */
+/*  Palette & Styles                                                  */
+/* ------------------------------------------------------------------ */
+const Palette = {
+  bg: "#F6F7FB",
+  card: "#FFFFFF",
+  text: "#151718",
+  subtext: "#6B7280",
+  chipBg: "#FFE089",
+  chipText: "#3A2F00",
+  accent: "#FFC107",
+  border: "#E5E7EB",
+};
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Palette.bg },
-
-  filterWrap: {
-    marginBottom: 12,
-  },
-
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
+  loading: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loadingText: { marginTop: 12, fontSize: 16, color: Palette.subtext },
+  empty: { padding: 32, alignItems: "center" },
+  emptyText: { color: Palette.subtext, fontSize: 16 },
+  noCommentsText: { color: Palette.subtext, fontStyle: "italic", textAlign: "center", marginVertical: 16 },
+  modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", padding: 16, borderBottomWidth: 1, borderColor: "#eee" },
+  backButton: { marginLeft: "auto" },
+  commentsTitle: { fontWeight: "bold", fontSize: 18, marginVertical: 12 },
+  commentItem: { marginVertical: 6, padding: 10, backgroundColor: "#f9f9f9", borderRadius: 8, borderWidth: 1, borderColor: "#eee" },
+  commentAuthor: { fontWeight: "600", fontSize: 14, color: Palette.accent },
+  commentText: { marginTop: 2, fontSize: 15, color: Palette.text },
+  inputRow: { flexDirection: "row", alignItems: "center", padding: 12, borderTopWidth: 1, borderColor: "#eee", backgroundColor: "#fafafa" },
+  commentInput: {
+    flex: 1,
     borderWidth: 1,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 1,
+    borderColor: "#ccc",
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: "#fff",
+    marginRight: 8,
+    fontSize: 16,
   },
-  chipText: { fontSize: 14, fontWeight: "600" },
-
-  card: {
-    backgroundColor: Palette.card,
-    borderRadius: 14,
-    padding: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-
-  headerRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
-  avatar: { width: 42, height: 42, borderRadius: 21, marginRight: 10 },
-  avatarPlaceholder: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: "#EDEDED",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  avatarInitials: { fontWeight: "700", color: "#555" },
-
-  nameRow: { flexDirection: "row", alignItems: "center" },
-  name: { fontSize: 16, fontWeight: "700", color: Palette.text },
-  dot: { color: Palette.subtext, marginHorizontal: 2 },
-  sub: { color: Palette.subtext, fontSize: 12 },
-
-  locRow: { flexDirection: "row", alignItems: "center", marginTop: 2, gap: 4 },
-  locText: { color: Palette.subtext, fontSize: 12 },
-
-  hero: {
-    width: "100%",
-    aspectRatio: 16 / 9,
-    borderRadius: 10,
-    marginTop: 8,
-    marginBottom: 10,
-  },
-
-  body: { fontSize: 16, color: Palette.text, lineHeight: 22 },
-
-  tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
-  tagPill: {
-    backgroundColor: Palette.chipBg,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: Platform.select({ ios: 6, android: 4 }),
-  },
-  tagText: { color: Palette.chipText, fontWeight: "700" },
-
-  actionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 12,
-  },
-  actionLeft: { flexDirection: "row", alignItems: "center", gap: 6, marginRight: 18 },
-  actionText: { color: Palette.subtext, fontWeight: "600" },
-  shareText: { color: Palette.subtext, fontWeight: "700" },
+  sendButton: { padding: 4 },
 });

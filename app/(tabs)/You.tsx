@@ -34,7 +34,7 @@ const menuItems = [
   { label: 'MyGustavus', url: 'https://my.gustavus.edu' },
   { label: 'Accounts', url: 'https://gustavus.edu/accounts' },
   { label: 'Notifications', url: 'https://gustavus.edu/notifications' },
-  { label: 'ID Card', url: 'https://gustavus.edu/idcard' },
+  { label: 'ID Card (Ha, Gotcha!)', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }, //'https://gustavus.edu/idcard'
   { label: 'Moodle', url: 'https://moodle.gustavus.edu/' },
 ];
 
@@ -52,7 +52,7 @@ export default function YouScreen() {
   const { profileUri, setProfileUri } = useProfileImage();
 
   // 📝 Profile name state
-  const [profileName, setProfileName] = useState('Gustavus Adolphus');
+  const [profileName, setProfileName] = useState('You can enter your name here');
   const [isEditingName, setIsEditingName] = useState(false); // Toggles edit mode
 
   // 🚀 Run on first render: attach auth listener and load saved profile data
@@ -205,7 +205,7 @@ export default function YouScreen() {
 
   // ✅ Logged in → show profile + menu
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={styles.container} style={{ backgroundColor: 'white' }}>
       {/* 👤 Profile Section */}
       <View style={styles.profileContainer}>
         {/* Tap image to change */}
@@ -245,9 +245,9 @@ export default function YouScreen() {
         ))}
 
         {/* 🚪 Log Out Option */}
-        <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
+        {/* <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
           <Text style={styles.menuText}>Log Out</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       {/* 🌐 In-App Browser Modal */}
