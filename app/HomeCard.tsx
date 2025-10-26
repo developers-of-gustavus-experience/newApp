@@ -211,9 +211,11 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 16,
-    textAlign: 'center',
-    color: '#7f8c8d',
+    textAlign: 'left',
+    letterSpacing: 0.5,
+    color: '#000000ff',
     marginBottom: 12,
+    lineHeight: 30,
   },
   infoText: {
     fontSize: 15,
