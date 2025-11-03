@@ -10,10 +10,12 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,   // ← NEW
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as WebBrowser from 'expo-web-browser';
 
 
 import getCampusData from '../../constants/homeScreenData'; 
@@ -28,7 +30,7 @@ interface Card {
   title: string;
   description: string;
   image: string;
-  menu?: string;
+  menuLink?: string;
   link?: string;
   info?: string;
   CampusSafetyphoneNumbers?: { name: string; number: string }[];
@@ -47,6 +49,11 @@ export default function HomeScreen() {
   const [campusData, setCampusData] = useState<CampusData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const openUrl = (url?: string) => {
+      if (!url) return;
+      WebBrowser.openBrowserAsync(url).catch(() => Linking.openURL(url));
+    };
+  
   // ----------------------------------------------------------------------
   // 1. Load data from Firestore (only once on mount)
   // ----------------------------------------------------------------------
@@ -93,6 +100,31 @@ export default function HomeScreen() {
         key={item.title + index}
         style={style}
         onPress={() => handleCardPress(section, index)}
+      >
+        <ImageBackground
+          source={item.image ? { uri: item.image } : defaultImage}
+          style={styles.cardImage}
+          imageStyle={{ borderRadius: 12 }}
+        >
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.8)']}
+            style={styles.gradientBottom}
+          >
+            <Text style={styles.cardText}>{item.title}</Text>
+          </LinearGradient>
+        </ImageBackground>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderCard2 = (item: Card, index: number, section: keyof CampusData, type: 'small' | 'medium' = 'small') => {
+    const style = type === 'medium' ? styles.mediumCard : styles.smallCard;
+
+    return (
+      <TouchableOpacity
+        key={item.title + index}
+        style={style}
+        onPress={() => openUrl(item.menuLink)}
       >
         <ImageBackground
           source={item.image ? { uri: item.image } : defaultImage}
@@ -173,7 +205,7 @@ export default function HomeScreen() {
         <FlatList
           data={campusData.dining}
           horizontal
-          renderItem={({ item, index }) => renderCard(item, index, 'dining', 'medium')}
+          renderItem={({ item, index }) => renderCard2(item, index, 'dining', 'medium')}
           keyExtractor={(item, idx) => item.title + idx}
           showsHorizontalScrollIndicator={false}
         />

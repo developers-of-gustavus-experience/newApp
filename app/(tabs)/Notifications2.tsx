@@ -36,6 +36,7 @@ import {
   Category,
   initials,
 } from "../../components/NotificationsPage";
+import { user } from "firebase-functions/v1/auth";
 
 /* ------------------------------------------------------------------ */
 /*  Types (same as in NotificationsPage)                               */
@@ -188,15 +189,24 @@ export default function FeedScreen() {
   // --------------------------------------------------------------
   // 3. Add Comment
   // --------------------------------------------------------------
+  // 🔁 Load saved profile name from AsyncStorage
+  const loadProfileName = async () => {
+    const saved = await AsyncStorage.getItem('profileName');
+    if (saved) {
+      return saved;
+    }
+  };
+
   const handleAddComment = async (postId: string, commentText: string) => {
     if (!commentText.trim()) return;
-
+    
     const commentRef = doc(db, "social", postId, "comments", "comment1");
     const postRef = doc(db, "social", postId);
 
+    const ProfileName = await loadProfileName() || "Anonymous";
     try {
       await updateDoc(commentRef, {
-        author: arrayUnion("Anonymous"),
+        author: arrayUnion(ProfileName),
         comment: arrayUnion(commentText),
       });
       await updateDoc(postRef, { comments: increment(1) });
@@ -339,7 +349,7 @@ export default function FeedScreen() {
               ) : (
                 selectedComments.comments.map((comment, idx) => (
                   <View key={idx} style={styles.commentItem}>
-                    <Text style={styles.commentAuthor}>{selectedComments.authors[idx] || "Anonymous"}</Text>
+                    <Text style={styles.commentAuthor}>{selectedComments.authors[idx] || "Guest"}</Text>
                     <Text style={styles.commentText}>{comment}</Text>
                   </View>
                 ))

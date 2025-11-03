@@ -43,8 +43,9 @@ interface DiningCard extends BaseCard {
 interface ExploreCard extends BaseCard {
   link?: string;
   info?: string;
-  CampusSafetyphoneNumbers?: PhoneNumber[];
-  HealthServicesPhoneNumbers?: PhoneNumber[];
+  CampusSafetyphoneNumber?: string;
+  HealthServicesPhoneNumber?: string;
+  GusBusPhone?: string;
 }
 
 /* final shape returned by getCampusData() */
@@ -132,10 +133,40 @@ export default function HomeCard() {
           resizeMode="cover"
         />
 
-        {/* ---------- TITLE & DESCRIPTION ---------- */}
+        {/* ---------- TITLE  ---------- */}
         <Text style={styles.title}>{card.title}</Text>
-        <Text style={styles.description}>{card.description}</Text>
 
+                {/* ---------- CAMPUS SAFETY PHONE NUMBERS ---------- */}
+        {'CampusSafetyphoneNumber' in card && (
+            <TouchableOpacity
+              onPress={() => Linking.openURL(`tel:${card.CampusSafetyphoneNumber}`)}
+            >
+              <Text style={styles.phone}>Campus Safety: {card.CampusSafetyphoneNumber}</Text>
+            </TouchableOpacity>
+          )}
+
+        {/* ---------- GUSBUS INFO (plain text) ---------- */}
+        {'GusBusPhone' in card && (
+            <TouchableOpacity
+              onPress={() => Linking.openURL(`tel:${card.GusBusPhone}`)}
+            >
+              <Text style={styles.phone}>GusBus: {card.GusBusPhone}</Text>
+            </TouchableOpacity>
+          )}
+
+        {/* ---------- HEALTH SERVICES PHONE NUMBERS ---------- */}
+        {'HealthServicesPhoneNumber' in card &&(
+            <TouchableOpacity
+              onPress={() => Linking.openURL(`tel:${card.HealthServicesPhoneNumber}`)}
+            >
+              <Text style={styles.phone}>Health Services: {card.HealthServicesPhoneNumber}</Text>
+            </TouchableOpacity>
+          )}
+
+        
+          {/* ---------- description ---------- */}
+        <Text style={styles.description}>{card.description}</Text>
+        
         {/* ---------- DINING MENU LINK ---------- */}
         {'menuLink' in card && card.menuLink && (
           <TouchableOpacity onPress={() => openUrl(card.menuLink)}>
@@ -154,28 +185,9 @@ export default function HomeCard() {
         {'info' in card && card.info && (
           <Text style={styles.infoText}>{card.info}</Text>
         )}
+        
 
-        {/* ---------- CAMPUS SAFETY PHONE NUMBERS ---------- */}
-        {'CampusSafetyphoneNumbers' in card &&
-          card.CampusSafetyphoneNumbers?.map((p, i) => (
-            <TouchableOpacity
-              key={i}
-              onPress={() => Linking.openURL(`tel:${p.number}`)}
-            >
-              <Text style={styles.phone}>{p.name}: {p.number}</Text>
-            </TouchableOpacity>
-          ))}
 
-        {/* ---------- HEALTH SERVICES PHONE NUMBERS ---------- */}
-        {'HealthServicesPhoneNumbers' in card &&
-          card.HealthServicesPhoneNumbers?.map((p, i) => (
-            <TouchableOpacity
-              key={i}
-              onPress={() => Linking.openURL(`tel:${p.number}`)}
-            >
-              <Text style={styles.phone}>{p.name}: {p.number}</Text>
-            </TouchableOpacity>
-          ))}
       </View>
     </ScrollView>
   );
@@ -191,6 +203,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     alignItems: 'center',
     backgroundColor: '#ffffffff',
+    paddingBottom: 20,
   },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -230,11 +243,18 @@ const styles = StyleSheet.create({
     color: '#3498db',
     textDecorationLine: 'underline',
     marginTop: 12,
+    marginBottom: 12,
   },
   phone: {
+    borderWidth: 2,
+    borderColor: '#2980b9',
+    backgroundColor: '#0498f4ad',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     fontSize: 16,
     color: '#2980b9',
-    textDecorationLine: 'underline',
+   // textDecorationLine: 'underline',
     marginVertical: 6,
+    
   },
 });

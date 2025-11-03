@@ -12,6 +12,7 @@ import {
   SafeAreaView,
   Pressable,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -24,19 +25,28 @@ import {
   signOut,
 } from 'firebase/auth';
 import { useProfileImage } from '../context/ProfileImageContext';
+import { collection, doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/FirebaseConfig'; // Adjust path as needed
+import * as WebBrowser from 'expo-web-browser';
 
 const screenHeight = Dimensions.get('window').height;
 const defaultImage = require('../../assets/images/default.png');
 const PROFILE_KEY = 'profileImageUri';
 
-const menuItems = [
-  { label: 'GusMail', url: 'https://mail.google.com/mail/u/0/' },
-  { label: 'MyGustavus', url: 'https://my.gustavus.edu' },
-  { label: 'Accounts', url: 'https://gustavus.edu/accounts' },
-  { label: 'Notifications', url: 'https://gustavus.edu/notifications' },
-  { label: 'ID Card (Ha, Gotcha!)', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }, //'https://gustavus.edu/idcard'
-  { label: 'Moodle', url: 'https://moodle.gustavus.edu/' },
-];
+type menuItems = {
+  label: string;
+  url: string;
+};
+
+// const menuItems = [
+//   { label: 'GusMail', url: 'https://mail.google.com/mail/u/0/' },
+//   { label: 'MyGustavus', url: 'https://my.gustavus.edu' },
+//   { label: 'Accounts', url: 'https://gustavus.edu/accounts' },
+//   { label: 'Notifications', url: 'https://gustavus.edu/notifications' },
+//   { label: 'ID Card (Click me for a surprise!)', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }, //'https://gustavus.edu/idcard'
+//   { label: 'Moodle', url: 'https://moodle.gustavus.edu/' },
+// ];
+
 
 export default function YouScreen() {
   // 👤 User state and login form input
@@ -50,11 +60,15 @@ export default function YouScreen() {
 
   // 📷 Profile image state (from a custom hook using AsyncStorage)
   const { profileUri, setProfileUri } = useProfileImage();
+  
 
   // 📝 Profile name state
-  const [profileName, setProfileName] = useState('You can enter your name here');
+  const [profileName, setProfileName] = useState('Guest'); // Default to 'Guest'
   const [isEditingName, setIsEditingName] = useState(false); // Toggles edit mode
 
+  const [query, setQuery] = useState('');
+    const [links, setLinks] = useState<menuItems[]>([]);
+    const [loading, setLoading] = useState(true);
   // 🚀 Run on first render: attach auth listener and load saved profile data
   useEffect(() => {
     // Listen for auth state changes (login/logout)
@@ -65,6 +79,44 @@ export default function YouScreen() {
     loadProfileName();
 
     // Cleanup listener on unmount
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const linksRef = doc(db, 'menuItems', 'Links');
+
+    const unsubscribe = onSnapshot(
+      linksRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const linkList: menuItems[] = [];
+
+          // Loop through all fields
+          Object.keys(data).forEach((title) => {
+            const url = data[title];
+            if (typeof url === 'string' && url.startsWith('http')) {
+              linkList.push({ label: title, url });
+            }
+          });
+
+          // Optional: Sort alphabetically
+          linkList.sort((a, b) => a.label.localeCompare(b.label));
+
+          setLinks(linkList);
+        } else {
+          console.warn('discover/links document not found');
+          setLinks([]);
+        }
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Firestore error:', error);
+        Alert.alert('Error', 'Failed to load links.');
+        setLoading(false);
+      }
+    );
+
     return () => unsubscribe();
   }, []);
 
@@ -232,23 +284,27 @@ export default function YouScreen() {
         )}
       </View>
 
-      {/* 🧭 Menu Links */}
+      {/* Menu Links */}
       <View style={styles.menuContainer}>
-        {menuItems.map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.menuItem}
-            onPress={() => openWebView(item.url)}
-          >
-            <Text style={styles.menuText}>{item.label}</Text>
-          </TouchableOpacity>
-        ))}
-
-        {/* 🚪 Log Out Option */}
-        {/* <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
-          <Text style={styles.menuText}>Log Out</Text>
-        </TouchableOpacity> */}
-      </View>
+        {loading ? (
+          <View style={styles.loadingLinks}>
+            <ActivityIndicator size="small" color="#552C00" />
+            <Text style={styles.loadingText}>Loading links...</Text>
+          </View>
+        ) : links.length === 0 ? (
+          <Text style={styles.noLinks}>No links available</Text>
+        ) : (
+          links.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.menuItem}
+              onPress={() => WebBrowser.openBrowserAsync(item.url)}
+            >
+              <Text style={styles.menuText}>{item.label}</Text>
+            </TouchableOpacity>
+          ))
+        )}
+    </View>
 
       {/* 🌐 In-App Browser Modal */}
       <Modal visible={modalVisible} animationType="slide">
@@ -373,4 +429,19 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontWeight: '600',
   },
+  loadingLinks: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 8,
+    color: '#666',
+    fontSize: 14,
+  },
+  noLinks: {
+    padding: 20,
+    color: '#999',
+    fontStyle: 'italic',
+    textAlign: 'center',
+},
 });
