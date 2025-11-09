@@ -6,6 +6,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme, Platform } from 'react-native';
+import { SettingsProvider } from './context/SettingsContext';
 // import * as Notifications from 'expo-notifications';
 
 // ✅ Configure how notifications behave when received while the app is in the foreground
@@ -80,22 +81,24 @@ export default function RootLayout() {
   return <RootLayoutNav />;
 }
 
-// 🧭 Defines the app’s navigation stack and theme switching (light/dark)
+// 🧭 Defines the app's navigation stack and theme switching (light/dark)
 function RootLayoutNav() {
   const colorScheme = useColorScheme(); // 'light' or 'dark' mode from system
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        {/* Index screen (e.g. login) — no header shown */}
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        
-        {/* Tab layout (loads bottom tab bar) — no header shown */}
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        
-        {/* Modal screen — pops up over current screen like a sheet */}
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
-    </ThemeProvider>
+    <SettingsProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack>
+          {/* Index screen (e.g. login) — no header shown */}
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          
+          {/* Tab layout (loads bottom tab bar) — no header shown */}
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          
+          {/* Modal screen — pops up over current screen like a sheet */}
+          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        </Stack>
+      </ThemeProvider>
+    </SettingsProvider>
   );
 }

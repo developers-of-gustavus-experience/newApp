@@ -16,12 +16,14 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
-
+import { useSettings } from '../context/SettingsContext';
 
 import getCampusData from '../../constants/homeScreenData'; 
 
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/FirebaseConfig';
+
+
 
 const defaultImage = require('../../assets/images/cards/default.png');
 const welcomeBackground = require('../../assets/images/welcome_bg.png');
@@ -48,6 +50,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const [campusData, setCampusData] = useState<CampusData | null>(null);
   const [loading, setLoading] = useState(true);
+  const { FEshown, WTEshown, LNshown } = useSettings();
 
   const openUrl = (url?: string) => {
       if (!url) return;
@@ -169,80 +172,92 @@ export default function HomeScreen() {
       </ImageBackground>
 
       {/* Featured Events */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Featured Events</Text>
-        <TouchableOpacity
-          style={styles.largeCard}
-          onPress={() => handleCardPress('featured', 0)}
-        >
-          <ImageBackground
-            source={campusData.featured[0]?.image ? { uri: campusData.featured[0].image } : defaultImage}
-            style={styles.cardImage}
-            imageStyle={{ borderRadius: 15 }}
-          >
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.8)']}
-              style={styles.gradientBottom}
+      {FEshown && (
+        <>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Featured Events</Text>
+            <TouchableOpacity
+              style={styles.largeCard}
+              onPress={() => handleCardPress('featured', 0)}
             >
-              <Text style={styles.cardText}>{campusData.featured[0]?.title}</Text>
-            </LinearGradient>
-          </ImageBackground>
-        </TouchableOpacity>
-        <FlatList
-          data={campusData.featured.slice(1)}
-          horizontal
-          renderItem={({ item, index }) => renderCard(item, index + 1, 'featured')}
-          keyExtractor={(item, idx) => item.title + idx}
-          showsHorizontalScrollIndicator={false}
-        />
-      </View>
+              <ImageBackground
+                source={campusData.featured[0]?.image ? { uri: campusData.featured[0].image } : defaultImage}
+                style={styles.cardImage}
+                imageStyle={{ borderRadius: 15 }}
+              >
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.8)']}
+                  style={styles.gradientBottom}
+                >
+                  <Text style={styles.cardText}>{campusData.featured[0]?.title}</Text>
+                </LinearGradient>
+              </ImageBackground>
+            </TouchableOpacity>
+            <FlatList
+              data={campusData.featured.slice(1)}
+              horizontal
+              renderItem={({ item, index }) => renderCard(item, index + 1, 'featured')}
+              keyExtractor={(item, idx) => item.title + idx}
+              showsHorizontalScrollIndicator={false}
+            />
+          </View>
 
-      <LinearGradient colors={['transparent', '#ccc', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.fadedDivider} />
+          <LinearGradient colors={['transparent', '#ccc', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.fadedDivider} />
+        </>
+      )}
 
       {/* Where to Eat */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Where to Eat</Text>
-        <FlatList
-          data={campusData.dining}
-          horizontal
-          renderItem={({ item, index }) => renderCard2(item, index, 'dining', 'medium')}
-          keyExtractor={(item, idx) => item.title + idx}
-          showsHorizontalScrollIndicator={false}
-        />
-      </View>
+      {WTEshown && (
+        <>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Where to Eat</Text>
+            <FlatList
+              data={campusData.dining}
+              horizontal
+              renderItem={({ item, index }) => renderCard2(item, index, 'dining', 'medium')}
+              keyExtractor={(item, idx) => item.title + idx}
+              showsHorizontalScrollIndicator={false}
+            />
+          </View>
 
-      <LinearGradient colors={['transparent', '#ccc', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.fadedDivider} />
+          <LinearGradient colors={['transparent', '#ccc', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.fadedDivider} />
+        </>
+      )}
 
       {/* Latest News */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Latest News</Text>
-        <TouchableOpacity
-          style={styles.largeCard}
-          onPress={() => handleCardPress('news', 0)}
-        >
-          <ImageBackground
-            source={campusData.news[0]?.image ? { uri: campusData.news[0].image } : defaultImage}
-            style={styles.cardImage}
-            imageStyle={{ borderRadius: 15 }}
-          >
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.8)']}
-              style={styles.gradientBottom}
+      {LNshown && (
+        <>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Latest News</Text>
+            <TouchableOpacity
+              style={styles.largeCard}
+              onPress={() => handleCardPress('news', 0)}
             >
-              <Text style={styles.cardText}>{campusData.news[0]?.title}</Text>
-            </LinearGradient>
-          </ImageBackground>
-        </TouchableOpacity>
-        <FlatList
-          data={campusData.news.slice(1)}
-          horizontal
-          renderItem={({ item, index }) => renderCard(item, index + 1, 'news')}
-          keyExtractor={(item, idx) => item.title + idx}
-          showsHorizontalScrollIndicator={false}
-        />
-      </View>
+              <ImageBackground
+                source={campusData.news[0]?.image ? { uri: campusData.news[0].image } : defaultImage}
+                style={styles.cardImage}
+                imageStyle={{ borderRadius: 15 }}
+              >
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.8)']}
+                  style={styles.gradientBottom}
+                >
+                  <Text style={styles.cardText}>{campusData.news[0]?.title}</Text>
+                </LinearGradient>
+              </ImageBackground>
+            </TouchableOpacity>
+            <FlatList
+              data={campusData.news.slice(1)}
+              horizontal
+              renderItem={({ item, index }) => renderCard(item, index + 1, 'news')}
+              keyExtractor={(item, idx) => item.title + idx}
+              showsHorizontalScrollIndicator={false}
+            />
+          </View>
 
-      <LinearGradient colors={['transparent', '#ccc', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.fadedDivider} />
+          <LinearGradient colors={['transparent', '#ccc', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.fadedDivider} />
+        </>
+      )}
 
       {/* Explore */}
       <View style={styles.section}>

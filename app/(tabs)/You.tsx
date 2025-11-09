@@ -20,14 +20,14 @@ import { WebView } from 'react-native-webview';
 import { auth } from '../../FirebaseConfig';
 import {
   onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
+  getAuth,
+  GoogleAuthProvider
 } from 'firebase/auth';
 import { useProfileImage } from '../context/ProfileImageContext';
 import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/FirebaseConfig'; // Adjust path as needed
 import * as WebBrowser from 'expo-web-browser';
+import { router } from 'expo-router';
 
 const screenHeight = Dimensions.get('window').height;
 const defaultImage = require('../../assets/images/default.png');
@@ -38,17 +38,9 @@ type menuItems = {
   url: string;
 };
 
-// const menuItems = [
-//   { label: 'GusMail', url: 'https://mail.google.com/mail/u/0/' },
-//   { label: 'MyGustavus', url: 'https://my.gustavus.edu' },
-//   { label: 'Accounts', url: 'https://gustavus.edu/accounts' },
-//   { label: 'Notifications', url: 'https://gustavus.edu/notifications' },
-//   { label: 'ID Card (Click me for a surprise!)', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }, //'https://gustavus.edu/idcard'
-//   { label: 'Moodle', url: 'https://moodle.gustavus.edu/' },
-// ];
-
 
 export default function YouScreen() {
+
   // 👤 User state and login form input
   const [user, setUser] = useState(null); // Firebase user object
   const [email, setEmail] = useState(''); // Login email input
@@ -195,69 +187,9 @@ export default function YouScreen() {
     ]);
   };
 
-  // 🔐 Sign in with Firebase Auth
-  const signIn = async () => {
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (error: any) {
-      Alert.alert('Login Failed', error.message);
-    }
-  };
-
-  // ➕ Sign up (create account) with Firebase Auth
-  const signUp = async () => {
-    try {
-      await createUserWithEmailAndPassword(auth, email, password);
-    } catch (error: any) {
-      Alert.alert('Signup Failed', error.message);
-    }
-  };
-
-  // 🚪 Log out user and clear input fields
-  const handleLogout = async () => {
-    await signOut(auth);
-    setEmail('');
-    setPassword('');
-  };
-
-  // 🌐 Open in-app browser modal with a given URL
-  const openWebView = (url: string) => {
-    setCurrentUrl(url);
-    setModalVisible(true);
-  };
-
-  // 🛑 Not logged in → show login/signup UI
-  // if (!user) {
-  //   return (
-  //     <SafeAreaView style={styles.loginContainer}>
-  //       <Text style={styles.title}>Login</Text>
-  //       <TextInput
-  //         style={styles.textInput}
-  //         placeholder="Email"
-  //         value={email}
-  //         onChangeText={setEmail}
-  //         autoCapitalize="none"
-  //       />
-  //       <TextInput
-  //         style={styles.textInput}
-  //         placeholder="Password"
-  //         value={password}
-  //         onChangeText={setPassword}
-  //         secureTextEntry
-  //       />
-  //       <TouchableOpacity style={styles.button} onPress={signIn}>
-  //         <Text style={styles.buttonText}>Log In</Text>
-  //       </TouchableOpacity>
-  //       <TouchableOpacity style={styles.button} onPress={signUp}>
-  //         <Text style={styles.buttonText}>Create Account</Text>
-  //       </TouchableOpacity>
-  //     </SafeAreaView>
-  //   );
-  // }
-
-  // ✅ Logged in → show profile + menu
   return (
     <ScrollView contentContainerStyle={styles.container} style={{ backgroundColor: 'white' }}>
+      
       {/* 👤 Profile Section */}
       <View style={styles.profileContainer}>
         {/* Tap image to change */}
@@ -303,8 +235,20 @@ export default function YouScreen() {
               <Text style={styles.menuText}>{item.label}</Text>
             </TouchableOpacity>
           ))
+
         )}
+    <TouchableOpacity 
+      style={styles.menuItem}
+      onPress={() => router.push('../Settings')}
+    >
+      <Text style={styles.menuText}>Settings</Text>
+    </TouchableOpacity>
     </View>
+    
+ 
+ 
+ 
+
 
       {/* 🌐 In-App Browser Modal */}
       <Modal visible={modalVisible} animationType="slide">
