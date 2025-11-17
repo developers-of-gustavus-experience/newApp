@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dimensions,
   FlatList,
@@ -9,80 +9,83 @@ import {
   ImageBackground,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,   // ← NEW
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { trackTagClicks, getTopTags } from '../utils/tracking';
-import * as Notifications from 'expo-notifications';
-import data from '../../constants/homeScreenData';
+import * as WebBrowser from 'expo-web-browser';
+import { useSettings } from '../context/SettingsContext';
+
+import getCampusData from '../../constants/homeScreenData'; 
+
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/FirebaseConfig';
+
+
 
 const defaultImage = require('../../assets/images/cards/default.png');
 const welcomeBackground = require('../../assets/images/welcome_bg.png');
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+interface Card {
+  title: string;
+  description: string;
+  image: string;
+  menuLink?: string;
+  link?: string;
+  info?: string;
+  CampusSafetyphoneNumbers?: { name: string; number: string }[];
+  HealthServicesPhoneNumbers?: { name: string; number: string }[];
+}
+
+interface CampusData {
+  featured: Card[];
+  news: Card[];
+  dining: Card[];
+  explore: Card[];
+}
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [campusData, setCampusData] = useState<CampusData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { FEshown, WTEshown, LNshown } = useSettings();
 
-  useEffect(() => {
-    const askNotificationPermission = async () => {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-
-      if (finalStatus !== 'granted') {
-        console.warn('❌ Notification permission not granted');
-      } else {
-        console.log('✅ Notification permission granted');
-      }
+  const openUrl = (url?: string) => {
+      if (!url) return;
+      WebBrowser.openBrowserAsync(url).catch(() => Linking.openURL(url));
     };
-
-    askNotificationPermission();
+  
+  // ----------------------------------------------------------------------
+  // 1. Load data from Firestore (only once on mount)
+  // ----------------------------------------------------------------------
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await getCampusData();     // ← your Firebase function
+        setCampusData(data);
+        //console.log('Loaded campus data:', data);
+      } catch (err) {
+        console.error('Failed to load campus data:', err);
+        Alert.alert('Error', 'Could not load content. Using fallback.');
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
-
-  // useEffect(() => {
-  //   const interval = setInterval(async () => {
-  //     const topTags = await getTopTags();
-
-  //     await Notifications.scheduleNotificationAsync({
-  //       content: {
-  //         title: '📊 Top Interests',
-  //         body: `Your top tags: ${topTags.join(', ')}`,
-  //       },
-  //       trigger: null,
-  //     });
-  //   }, 10000);
-
-  //   return () => clearInterval(interval);
-  // }, []);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) return 'Good Morning 🌅';
-    if (hour >= 12 && hour < 17) return 'Good Afternoon ☀️';
-    if (hour >= 17 && hour < 21) return 'Good Evening 🌇';
-    return 'Good Night 🌃';
+    if (hour >= 5 && hour < 12) return 'Good Morning🌅';
+    if (hour >= 12 && hour < 17) return 'Good Afternoon🌞';
+    if (hour >= 17 && hour < 21) return 'Good Evening🌇';
+    return 'Good Night🌙';
   };
 
-  const resetClickStats = async () => {
-    await AsyncStorage.removeItem('clickStats');
-    Alert.alert('Success', 'Click stats have been reset.');
-  };
+  
 
-  const handleCardPress = (section: string, index: number) => {
-    const item = data[section][index];
-    trackTagClicks(item.tags || []);
+  const handleCardPress = (section: keyof CampusData, index: number) => {
     router.push({
       pathname: '/HomeCard',
       params: {
@@ -92,13 +95,17 @@ export default function HomeScreen() {
     });
   };
 
-  const renderCard = (item, index, section, type = 'small') => {
+  const renderCard = (item: Card, index: number, section: keyof CampusData, type: 'small' | 'medium' = 'small') => {
     const style = type === 'medium' ? styles.mediumCard : styles.smallCard;
 
     return (
-      <TouchableOpacity key={item.title + index} style={style} onPress={() => handleCardPress(section, index)}>
+      <TouchableOpacity
+        key={item.title + index}
+        style={style}
+        onPress={() => handleCardPress(section, index)}
+      >
         <ImageBackground
-          source={item.image || defaultImage}
+          source={item.image ? { uri: item.image } : defaultImage}
           style={styles.cardImage}
           imageStyle={{ borderRadius: 12 }}
         >
@@ -113,12 +120,48 @@ export default function HomeScreen() {
     );
   };
 
+  const renderCard2 = (item: Card, index: number, section: keyof CampusData, type: 'small' | 'medium' = 'small') => {
+    const style = type === 'medium' ? styles.mediumCard : styles.smallCard;
+
+    return (
+      <TouchableOpacity
+        key={item.title + index}
+        style={style}
+        onPress={() => openUrl(item.menuLink)}
+      >
+        <ImageBackground
+          source={item.image ? { uri: item.image } : defaultImage}
+          style={styles.cardImage}
+          imageStyle={{ borderRadius: 12 }}
+        >
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.8)']}
+            style={styles.gradientBottom}
+          >
+            <Text style={styles.cardText}>{item.title}</Text>
+          </LinearGradient>
+        </ImageBackground>
+      </TouchableOpacity>
+    );
+  };
+
+  // ----------------------------------------------------------------------
+  // 2. Show spinner while loading
+  // ----------------------------------------------------------------------
+  if (loading || !campusData) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2c3e50" />
+        <Text style={styles.loadingText}>Loading campus content…</Text>
+      </View>
+    );
+  }
+
+  // ----------------------------------------------------------------------
+  // 3. Main UI – exactly your old layout, now using `campusData`
+  // ----------------------------------------------------------------------
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 90 }}>
-      <TouchableOpacity onPress={resetClickStats} style={styles.resetButton}>
-        <Text style={styles.resetButtonText}>Reset Stats</Text>
-      </TouchableOpacity>
-
       <ImageBackground source={welcomeBackground} style={styles.welcomeBackground}>
         <LinearGradient colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.9)']} style={styles.gradientOverlay}>
           <View style={styles.welcomeOverlay}>
@@ -128,83 +171,99 @@ export default function HomeScreen() {
         </LinearGradient>
       </ImageBackground>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Featured Events</Text>
-        <TouchableOpacity
-          style={styles.largeCard}
-          onPress={() => handleCardPress('featured', 0)}
-        >
-          <ImageBackground
-            source={data.featured[0].image}
-            style={styles.cardImage}
-            imageStyle={{ borderRadius: 15 }}
-          >
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.8)']}
-              style={styles.gradientBottom}
+      {/* Featured Events */}
+      {FEshown && (
+        <>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Featured Events</Text>
+            <TouchableOpacity
+              style={styles.largeCard}
+              onPress={() => handleCardPress('featured', 0)}
             >
-              <Text style={styles.cardText}>{data.featured[0].title}</Text>
-            </LinearGradient>
-          </ImageBackground>
-        </TouchableOpacity>
-        <FlatList
-          data={data.featured.slice(1)}
-          horizontal
-          renderItem={({ item, index }) => renderCard(item, index + 1, 'featured')}
-          keyExtractor={(item, idx) => item.title + idx}
-          showsHorizontalScrollIndicator={false}
-        />
-      </View>
+              <ImageBackground
+                source={campusData.featured[0]?.image ? { uri: campusData.featured[0].image } : defaultImage}
+                style={styles.cardImage}
+                imageStyle={{ borderRadius: 15 }}
+              >
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.8)']}
+                  style={styles.gradientBottom}
+                >
+                  <Text style={styles.cardText}>{campusData.featured[0]?.title}</Text>
+                </LinearGradient>
+              </ImageBackground>
+            </TouchableOpacity>
+            <FlatList
+              data={campusData.featured.slice(1)}
+              horizontal
+              renderItem={({ item, index }) => renderCard(item, index + 1, 'featured')}
+              keyExtractor={(item, idx) => item.title + idx}
+              showsHorizontalScrollIndicator={false}
+            />
+          </View>
 
-      <LinearGradient colors={['transparent', '#ccc', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.fadedDivider} />
+          <LinearGradient colors={['transparent', '#ccc', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.fadedDivider} />
+        </>
+      )}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Where to Eat</Text>
-        <FlatList
-          data={data.dining}
-          horizontal
-          renderItem={({ item, index }) => renderCard(item, index, 'dining', 'medium')}
-          keyExtractor={(item, idx) => item.title + idx}
-          showsHorizontalScrollIndicator={false}
-        />
-      </View>
+      {/* Where to Eat */}
+      {WTEshown && (
+        <>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Where to Eat</Text>
+            <FlatList
+              data={campusData.dining}
+              horizontal
+              renderItem={({ item, index }) => renderCard2(item, index, 'dining', 'medium')}
+              keyExtractor={(item, idx) => item.title + idx}
+              showsHorizontalScrollIndicator={false}
+            />
+          </View>
 
-      <LinearGradient colors={['transparent', '#ccc', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.fadedDivider} />
+          <LinearGradient colors={['transparent', '#ccc', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.fadedDivider} />
+        </>
+      )}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Latest News</Text>
-        <TouchableOpacity
-          style={styles.largeCard}
-          onPress={() => handleCardPress('news', 0)}
-        >
-          <ImageBackground
-            source={data.news[0].image}
-            style={styles.cardImage}
-            imageStyle={{ borderRadius: 15 }}
-          >
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.8)']}
-              style={styles.gradientBottom}
+      {/* Latest News */}
+      {LNshown && (
+        <>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Latest News</Text>
+            <TouchableOpacity
+              style={styles.largeCard}
+              onPress={() => handleCardPress('news', 0)}
             >
-              <Text style={styles.cardText}>{data.news[0].title}</Text>
-            </LinearGradient>
-          </ImageBackground>
-        </TouchableOpacity>
-        <FlatList
-          data={data.news.slice(1)}
-          horizontal
-          renderItem={({ item, index }) => renderCard(item, index + 1, 'news')}
-          keyExtractor={(item, idx) => item.title + idx}
-          showsHorizontalScrollIndicator={false}
-        />
-      </View>
+              <ImageBackground
+                source={campusData.news[0]?.image ? { uri: campusData.news[0].image } : defaultImage}
+                style={styles.cardImage}
+                imageStyle={{ borderRadius: 15 }}
+              >
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.8)']}
+                  style={styles.gradientBottom}
+                >
+                  <Text style={styles.cardText}>{campusData.news[0]?.title}</Text>
+                </LinearGradient>
+              </ImageBackground>
+            </TouchableOpacity>
+            <FlatList
+              data={campusData.news.slice(1)}
+              horizontal
+              renderItem={({ item, index }) => renderCard(item, index + 1, 'news')}
+              keyExtractor={(item, idx) => item.title + idx}
+              showsHorizontalScrollIndicator={false}
+            />
+          </View>
 
-      <LinearGradient colors={['transparent', '#ccc', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.fadedDivider} />
+          <LinearGradient colors={['transparent', '#ccc', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.fadedDivider} />
+        </>
+      )}
 
+      {/* Explore */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Explore</Text>
         <FlatList
-          data={data.explore}
+          data={campusData.explore}
           horizontal
           renderItem={({ item, index }) => renderCard(item, index, 'explore', 'medium')}
           keyExtractor={(item, idx) => item.title + idx}
@@ -215,19 +274,14 @@ export default function HomeScreen() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Styles – unchanged (kept exactly as you had them)                         */
+/* -------------------------------------------------------------------------- */
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  resetButton: {
-    position: 'absolute',
-    top: 40,
-    left: 20,
-    zIndex: 10,
-    backgroundColor: '#e74c3c',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  resetButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 12, fontSize: 16, color: '#2c3e50' },
+
   welcomeBackground: {
     width: '100%',
     height: 300,

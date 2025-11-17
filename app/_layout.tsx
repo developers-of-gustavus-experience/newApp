@@ -6,16 +6,17 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme, Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import { SettingsProvider } from './context/SettingsContext';
+// import * as Notifications from 'expo-notifications';
 
 // ✅ Configure how notifications behave when received while the app is in the foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,     // Show banner/alert when notification arrives
-    shouldPlaySound: true,     // Play sound
-    shouldSetBadge: false,     // Don't update app icon badge count
-  }),
-});
+// Notifications.setNotificationHandler({
+//   handleNotification: async () => ({
+//     shouldShowAlert: true,     // Show banner/alert when notification arrives
+//     shouldPlaySound: true,     // Play sound
+//     shouldSetBadge: false,     // Don't update app icon badge count
+//   }),
+// });
 
 // 🚫 Prevent the splash screen from auto-hiding before custom fonts are loaded
 SplashScreen.preventAutoHideAsync();
@@ -39,25 +40,25 @@ export default function RootLayout() {
   });
 
   // 🔔 On app load, set up notification permissions and Android channels
-  useEffect(() => {
-    // Android-specific setup for default notification channel
-    if (Platform.OS === 'android') {
-      Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.DEFAULT,
-      });
-    }
+  // useEffect(() => {
+  //   // Android-specific setup for default notification channel
+  //   if (Platform.OS === 'android') {
+  //     Notifications.setNotificationChannelAsync('default', {
+  //       name: 'default',
+  //       importance: Notifications.AndroidImportance.DEFAULT,
+  //     });
+  //   }
 
-    // iOS: Request user permission for notifications
-    async function requestPermissions() {
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== 'granted') {
-        alert('Permission for notifications not granted');
-      }
-    }
+  //   // iOS: Request user permission for notifications
+  //   async function requestPermissions() {
+  //     const { status } = await Notifications.requestPermissionsAsync();
+  //     if (status !== 'granted') {
+  //       alert('Permission for notifications not granted');
+  //     }
+  //   }
 
-    requestPermissions();
-  }, []);
+  //   requestPermissions();
+  // }, []);
 
   // ❗ If font loading fails, throw error to crash app and surface the problem
   useEffect(() => {
@@ -80,22 +81,24 @@ export default function RootLayout() {
   return <RootLayoutNav />;
 }
 
-// 🧭 Defines the app’s navigation stack and theme switching (light/dark)
+// 🧭 Defines the app's navigation stack and theme switching (light/dark)
 function RootLayoutNav() {
   const colorScheme = useColorScheme(); // 'light' or 'dark' mode from system
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        {/* Index screen (e.g. login) — no header shown */}
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        
-        {/* Tab layout (loads bottom tab bar) — no header shown */}
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        
-        {/* Modal screen — pops up over current screen like a sheet */}
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
-    </ThemeProvider>
+    <SettingsProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack>
+          {/* Index screen (e.g. login) — no header shown */}
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          
+          {/* Tab layout (loads bottom tab bar) — no header shown */}
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          
+          {/* Modal screen — pops up over current screen like a sheet */}
+          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        </Stack>
+      </ThemeProvider>
+    </SettingsProvider>
   );
 }

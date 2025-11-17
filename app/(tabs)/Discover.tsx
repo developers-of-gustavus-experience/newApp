@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -6,26 +6,68 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
+import { collection, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/FirebaseConfig'; // Adjust path as needed
 
-const sampleData = [
-  { title: 'Campus Events', url: 'https://gustavus.edu/events/' },
-  { title: 'Student Clubs', url: 'https://gustavus.edu/studentorgs/organizations/' },
-  { title: 'Dining Services', url: 'https://gustavus.edu/diningservices/' },
-  { title: 'Bookstore Deals', url: 'https://www.bookmark.gustavus.edu/' },
-  { title: 'Gus Bus', url: 'https://gustavus.edu/safety/shuttle/' },
-  { title: 'Tutoring Hours', url: 'https://gustavus.edu/asc/' },
-  { title: 'Athletic Games', url: 'https://athletics.gustavus.edu/' },
-  { title: 'Career Services', url: 'https://gustavus.edu/careercenter/' },
-  { title: 'Campus Map', url: 'https://gustavus.edu/virtualtour/' },
-  { title: 'Library Info', url: 'https://gustavus.edu/library/' },
-];
+type LinkItem = {
+  title: string;
+  url: string;
+};
 
 export default function DiscoverScreen() {
   const [query, setQuery] = useState('');
+  const [links, setLinks] = useState<LinkItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredData = sampleData.filter((item) =>
+  // --------------------------------------------------------------
+  // 1. Real-time listener: Fetch discover/links document
+  // --------------------------------------------------------------
+  useEffect(() => {
+    const linksRef = doc(db, 'discover', 'links');
+
+    const unsubscribe = onSnapshot(
+      linksRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const linkList: LinkItem[] = [];
+
+          // Loop through all fields
+          Object.keys(data).forEach((title) => {
+            const url = data[title];
+            if (typeof url === 'string' && url.startsWith('http')) {
+              linkList.push({ title, url });
+            }
+          });
+
+          // Optional: Sort alphabetically
+          linkList.sort((a, b) => a.title.localeCompare(b.title));
+
+          setLinks(linkList);
+        } else {
+          console.warn('discover/links document not found');
+          setLinks([]);
+        }
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Firestore error:', error);
+        Alert.alert('Error', 'Failed to load links.');
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // --------------------------------------------------------------
+  // 2. Filter links based on search
+  // --------------------------------------------------------------
+  const filteredData = links.filter((item) =>
     item.title.toLowerCase().includes(query.toLowerCase())
   );
 
@@ -35,6 +77,18 @@ export default function DiscoverScreen() {
       WebBrowser.openBrowserAsync(searchUrl);
     }
   };
+
+  // --------------------------------------------------------------
+  // Render
+  // --------------------------------------------------------------
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#552C00" />
+        <Text style={styles.loadingText}>Loading links...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -67,33 +121,46 @@ export default function DiscoverScreen() {
   );
 }
 
+// --------------------------------------------------------------
+// Styles
+// --------------------------------------------------------------
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 80,
     paddingBottom: 50,
     paddingHorizontal: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffffff',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#ffffffff',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#552C00',
   },
   searchInput: {
     height: 45,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 8,
+    borderBottomColor: '#030303ff',
+    borderBottomWidth: 2,
     paddingHorizontal: 12,
     marginBottom: 12,
     fontSize: 16,
-    color: '#000',
+    color: '#000000',
   },
   searchButton: {
-    backgroundColor: '#007aff',
-    paddingVertical: 10,
+    backgroundColor: '#552C00',
+    paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
     marginBottom: 16,
   },
   searchButtonText: {
-    color: '#fff',
+    color: '#ffffff',
     fontWeight: '600',
     fontSize: 16,
   },
@@ -101,14 +168,13 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   card: {
-    backgroundColor: '#f2f2f2',
-    padding: 20,
-    borderRadius: 10,
-    marginBottom: 12,
-    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   cardText: {
     fontSize: 16,
-    color: '#333',
+    color: '#070707ff',
   },
 });

@@ -1,0 +1,48 @@
+// This is where we will construct, manage and export our Firebase backend
+
+// Create collections
+- Featured Events 
+- where to eat 
+- latest news 
+- explore
+- social
+
+// Each featured events doc needs
+const id
+const title
+const image 
+const description
+const url
+
+// each where to eat doc needs
+const id
+const title
+const image
+const description
+const url
+
+// each latest news doc needs
+const id
+const title
+const image
+const description
+const url
+
+// each explore doc needs
+const id
+const title
+const image
+const description
+const url
+
+//each social doc needs
+id
+author
+dateCreated
+location
+imageUrl?:
+text
+tags
+likes
+comments
+category
